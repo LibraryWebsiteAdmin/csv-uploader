@@ -70,40 +70,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     }
 }
 
-// Handle POST request for combined CSV processing and backup
+// Handle POST request for combined CSV processing and backup with SSE for percentage bar
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!isset($_POST['table']) || !isset($_FILES['csvFile'])) {
-        header('Content-Type: application/json; charset=UTF-8');
-        ob_clean();
-        echo json_encode(['success' => false, 'message' => 'Invalid request!']);
+    // Set SSE headers to enable streaming for the percentage bar
+    header('Content-Type: text/event-stream');
+    header('Cache-Control: no-cache');
+    header('Connection: keep-alive');
+    ob_clean(); // Clear any stray output
+
+    // Function to send SSE error message and exit
+    function sendSSEError($message) {
+        echo "event: error\n";
+        echo "data: " . json_encode(['success' => false, 'message' => $message]) . "\n\n";
+        ob_flush();
+        flush();
         exit;
+    }
+
+    if (!isset($_POST['table']) || !isset($_FILES['csvFile'])) {
+        sendSSEError('Invalid request!');
     }
 
     // Validate file
     $file = $_FILES['csvFile'];
     $tmpFilePath = $file['tmp_name'];
     if ($file['error'] == UPLOAD_ERR_NO_FILE) {
-        header('Content-Type: application/json; charset=UTF-8');
-        ob_clean();
-        echo json_encode(['success' => false, 'message' => 'No file uploaded!']);
-        exit;
+        sendSSEError('No file uploaded!');
     }
     if ($file['type'] !== 'text/csv' && !str_ends_with(strtolower($file['name']), '.csv')) {
         unlink($tmpFilePath);
-        header('Content-Type: application/json; charset=UTF-8');
-        ob_clean();
-        echo json_encode(['success' => false, 'message' => 'Only CSV files are allowed!']);
-        exit;
+        sendSSEError('Only CSV files are allowed!');
     }
     if ($file['size'] > 3 * 1024 * 1024) {
         unlink($tmpFilePath);
-        header('Content-Type: application/json; charset=UTF-8');
-        ob_clean();
-        echo json_encode(['success' => false, 'message' => 'File size exceeds 3MB limit!']);
-        exit;
+        sendSSEError('File size exceeds 3MB limit!');
     }
 
-    // Forward the combined request to db_proxy.php
+    // Forward the combined request to db_proxy.php with SSE streaming
     $url = $proxy_url . '?action=process_and_backup&api_key=' . urlencode($api_key);
     $post_data = [
         'table' => $_POST['table'],
@@ -114,27 +117,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    $response = curl_exec($ch);
-    if ($response === false) {
-        unlink($tmpFilePath);
-        header('Content-Type: application/json; charset=UTF-8');
-        ob_clean();
-        echo json_encode(['success' => false, 'message' => 'Failed to process CSV via proxy: ' . curl_error($ch)]);
-        curl_close($ch);
-        exit;
-    }
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, false); // Stream the response directly
+    curl_setopt($ch, CURLOPT_WRITEFUNCTION, function($ch, $data) {
+        // Stream the SSE data directly to the client for percentage updates
+        echo $data;
+        ob_flush();
+        flush();
+        return strlen($data);
+    });
+    curl_setopt($ch, CURLOPT_BUFFERSIZE, 128); // Small buffer to ensure streaming
+    curl_setopt($ch, CURLOPT_TIMEOUT, 300); // Long timeout for large CSVs
+
+    $success = curl_exec($ch);
+    $error = curl_error($ch);
     curl_close($ch);
 
     // Delete the temporary file
     unlink($tmpFilePath);
 
-    // Send the response (JSON containing CSV result and backup)
-    header('Content-Type: application/json; charset=UTF-8');
-    header('Connection: close'); // Help with HTTP/2 issues
-    ob_clean();
-    echo $response;
+    if (!$success) {
+        sendSSEError('Failed to process CSV via proxy: ' . $error);
+    }
+
     exit;
 }
 ?>
