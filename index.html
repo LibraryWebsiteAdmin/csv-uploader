@@ -192,6 +192,42 @@
             transform: scale(1.05);
         }
 
+        /* Progress Bar Styling */
+        .progress-container {
+            margin-top: 15px;
+            display: none; /* Hidden by default */
+        }
+
+        .progress-bar {
+            width: 100%;
+            background: #dfe6e9;
+            border-radius: 10px;
+            height: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #6b48ff, #00ddeb);
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #2c3e50; /* Dark gray initially for visibility on light background */
+            background: rgba(255, 255, 255, 0.7); /* Default semi-transparent white background */
+            padding: 2px 6px;
+            border-radius: 5px;
+            transition: color 0.3s ease, background 0.3s ease; /* Smooth transition for color and background */
+        }
+
         #error, #success, #login-error {
             font-weight: 600;
             margin-top: 15px;
@@ -205,6 +241,10 @@
 
         #success {
             color: #27ae60;
+        }
+
+        .skipped-rows {
+            color: #f1c40f; /* Yellow for skipped rows */
         }
 
         #login-container, #uploader-container {
@@ -247,6 +287,14 @@
                 padding: 15px;
                 font-size: 0.9rem;
             }
+
+            .progress-bar {
+                height: 18px;
+            }
+
+            .progress-text {
+                font-size: 0.8rem;
+            }
         }
     </style>
 </head>
@@ -285,6 +333,13 @@
             <p id="file-name"></p>
             
             <button onclick="initiateUpload()">Upload and Process</button>
+        </div>
+        
+        <div class="progress-container" id="progress-container">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+                <span class="progress-text" id="progress-text">0%</span>
+            </div>
         </div>
         
         <p id="error"></p>
@@ -463,12 +518,50 @@
             await uploadCSV(table);
         }
 
+        // Animate the progress bar until the upload completes
+        function animateProgressBar() {
+            const progressContainer = document.getElementById('progress-container');
+            const progressFill = document.getElementById('progress-fill');
+            const progressText = document.getElementById('progress-text');
+            progressContainer.style.display = 'block';
+            let progress = 0;
+
+            // Simulate progress up to 90% while the request is in progress
+            const interval = setInterval(() => {
+                if (progress < 90) {
+                    progress += 1;
+                    progressFill.style.width = progress + '%';
+                    progressText.textContent = progress + '%';
+                    // Change text color to white and remove background at 55%
+                    if (progress >= 55) {
+                        progressText.style.color = '#fff';
+                        progressText.style.background = 'none';
+                    }
+                }
+            }, 100); // Slower increment for a smoother, longer animation
+
+            // Function to complete the progress to 100%
+            function completeProgress() {
+                clearInterval(interval);
+                progress = 100;
+                progressFill.style.width = '100%';
+                progressText.textContent = '100%';
+                progressText.style.color = '#fff'; // Ensure text is white at 100%
+                progressText.style.background = 'none'; // Ensure background is removed at 100%
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                }, 500); // Brief delay to show 100% before hiding
+            }
+
+            return completeProgress; // Return the function to complete the progress
+        }
+
         // Handle CSV upload and backup download
         async function uploadCSV(table) {
             const error = document.getElementById('error');
             const success = document.getElementById('success');
+            const progressContainer = document.getElementById('progress-container');
             error.textContent = '';
-            success.textContent = 'Uploading CSV...';
 
             // Validate inputs
             if (!table) {
@@ -494,6 +587,9 @@
                 return;
             }
 
+            // Start the progress bar animation
+            const completeProgress = animateProgressBar();
+
             const formData = new FormData();
             formData.append('table', table);
             formData.append('csvFile', selectedFile);
@@ -504,13 +600,26 @@
                     body: formData
                 });
 
+                // Complete the progress bar animation to 100%
+                completeProgress();
+
                 const result = await response.json();
 
                 if (result.success) {
-                    success.textContent = result.message;
+                    // Split the message into parts for styling
+                    let formattedMessage = '';
+                    const messageParts = result.message.split('\nSkipped rows:\n');
+                    if (messageParts.length > 1) {
+                        const beforeSkipped = messageParts[0];
+                        const skipped = messageParts[1];
+                        formattedMessage = beforeSkipped + '<br><span class="skipped-rows">Skipped rows:<br>' + skipped + '</span><br>Final verdict: Success.';
+                    } else {
+                        formattedMessage = result.message + '<br>Final verdict: Success.';
+                    }
+
                     // If a backup is included, download it
                     if (result.backup && result.backup_filename) {
-                        success.textContent = result.message + ' Downloading backup...';
+                        formattedMessage += '<br>Downloading backup...';
                         const backupContent = atob(result.backup); // Decode base64
                         const blob = new Blob([backupContent], { type: 'application/octet-stream' });
                         const url = window.URL.createObjectURL(blob);
@@ -522,22 +631,41 @@
                         a.click();
                         window.URL.revokeObjectURL(url);
                         document.body.removeChild(a);
-                        success.textContent = result.message + ' Backup downloaded successfully!';
+                        formattedMessage += '<br>Backup downloaded successfully!';
                     }
-                    selectedFile = null; // Clear the selected file
-                    fileNameDisplay.textContent = ''; // Clear the file name display
-                } else {
-                    error.textContent = result.message;
-                }
-            } catch (err) {
-                // Handle HTTP/2 PROTOCOL_ERROR
-                if (err.message.includes('PROTOCOL_ERROR')) {
-                    success.textContent = 'Rows were updated successfully, but there was a network issue. Please verify the data in the database.';
-                    // Since rows were updated, attempt to fetch the backup (though ideally handled by backend)
+
+                    // Set the success message
+                    success.innerHTML = formattedMessage;
+
+                    // Clear the selected file and reset the file input
                     selectedFile = null;
                     fileNameDisplay.textContent = '';
+                    fileInput.value = ''; // Reset the file input to allow re-selection
                 } else {
-                    error.textContent = 'Error uploading file: ' + err.message;
+                    // Handle failure case: append "Final verdict: Failure."
+                    let formattedMessage = '';
+                    const messageParts = result.message.split('\nSkipped rows:\n');
+                    if (messageParts.length > 1) {
+                        const beforeSkipped = messageParts[0];
+                        const skipped = messageParts[1];
+                        formattedMessage = beforeSkipped + '<br><span class="skipped-rows">Skipped rows:<br>' + skipped + '</span><br>Final verdict: Failure.';
+                    } else {
+                        formattedMessage = result.message + '<br>Final verdict: Failure.';
+                    }
+                    error.innerHTML = formattedMessage;
+                }
+            } catch (err) {
+                // Complete the progress bar animation to 100%
+                completeProgress();
+
+                // Handle HTTP/2 PROTOCOL_ERROR
+                if (err.message.includes('PROTOCOL_ERROR')) {
+                    success.innerHTML = 'Rows were updated successfully, but there was a network issue. Please verify the data in the database.';
+                    selectedFile = null;
+                    fileNameDisplay.textContent = '';
+                    fileInput.value = ''; // Reset the file input
+                } else {
+                    error.innerHTML = 'Error uploading file: ' + err.message + '<br>Final verdict: Failure.';
                 }
             }
         }
@@ -575,6 +703,7 @@
             document.getElementById('password').value = '';
             selectedFile = null;
             fileNameDisplay.textContent = '';
+            fileInput.value = ''; // Reset the file input on logout
         }
     </script>
 </body>
