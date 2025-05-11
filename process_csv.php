@@ -1,5 +1,5 @@
 <?php
-header('Access-Control-Allow-Origin: https://tech-dragoness.github.io');
+header('Access-Control-Allow-Origin: https://librarywebsiteadmin.github.io');
 header('Access-Control-Allow-Methods: GET, POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
