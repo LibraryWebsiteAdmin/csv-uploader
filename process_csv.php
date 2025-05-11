@@ -8,7 +8,7 @@ ob_start();
 
 // URL of the GoDaddy proxy
 $proxy_url = 'https://sophiacollegelibrary.in/api/db_proxy.php';
-$api_key = 'zX9mPqW3vL8nR5tY2uJ6hF4dS7gB!kM2wQ5eT8yI1oP4aL7xC0vN3b3I7'; // Same API key as in db_proxy.php
+$api_key = 'zX9mPqW3vL8nR5tY2uJ5%RT&l7gB!kM2wQ5eT8yI1oP4aL7xC0vN3b3I7'; // Same API key as in db_proxy.php
 
 // Handle GET request for table names
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get_tables') {
