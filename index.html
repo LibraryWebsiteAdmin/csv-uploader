@@ -481,7 +481,7 @@
         async function loadTables() {
             const select = document.getElementById('table');
             try {
-                const response = await fetch('https://csv-uploader-easo.onrender.com/process_csv.php?action=get_tables');
+                const response = await fetch('https://csv-uploader-1t0d.onrender.com/process_csv.php?action=get_tables');
                 const result = await response.json();
                 
                 if (result.success) {
@@ -595,7 +595,7 @@
             formData.append('csvFile', selectedFile);
 
             try {
-                const response = await fetch('https://csv-uploader-easo.onrender.com/process_csv.php', {
+                const response = await fetch('https://csv-uploader-1t0d.onrender.com/process_csv.php', {
                     method: 'POST',
                     body: formData
                 });
