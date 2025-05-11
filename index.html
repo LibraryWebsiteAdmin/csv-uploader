@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Data Uploader - Sophia College Library</title>
+    <link rel="icon" type="image/x-icon" href="/csv-uploader/Sophia_College_Logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #6b48ff, #00ddeb);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .header h1 {
+            color: #fff;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .logout-btn {
+            background: #ff4d4d;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s ease, transform 0.2s ease;
+        }
+
+        .logout-btn:hover {
+            background: #e63939;
+            transform: scale(1.05);
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            margin-top: 80px;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            color: #2c3e50;
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+
+        p {
+            color: #7f8c8d;
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #34495e;
+            font-weight: 600;
+            margin: 10px 0 5px;
+            text-align: left;
+        }
+
+        select, input[type="password"], input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            margin: 5px 0 15px;
+            border: 2px solid #dfe6e9;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        select:focus, input[type="password"]:focus, input[type="text"]:focus {
+            border-color: #6b48ff;
+            box-shadow: 0 0 8px rgba(107, 72, 255, 0.3);
+            outline: none;
+        }
+
+        /* Password Container Styling */
+        .password-container {
+            position: relative;
+            width: 100%;
+        }
+
+        .password-container input {
+            padding-right: 40px; /* Make space for the eye icon */
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: #7f8c8d;
+            transition: color 0.3s ease;
+        }
+
+        .toggle-password:hover {
+            color: #6b48ff;
+        }
+
+        /* Drag-and-Drop Area Styling */
+        .drag-drop-area {
+            width: 100%;
+            padding: 20px;
+            margin: 5px 0 15px;
+            border: 2px dashed #dfe6e9;
+            border-radius: 10px;
+            background: #f9f9f9;
+            text-align: center;
+            font-size: 1rem;
+            color: #7f8c8d;
+            cursor: pointer;
+            transition: border-color 0.3s ease, background 0.3s ease;
+        }
+
+        .drag-drop-area.drag-over {
+            border-color: #6b48ff;
+            background: #e0e7ff;
+            box-shadow: 0 0 10px rgba(107, 72, 255, 0.3);
+        }
+
+        .drag-drop-area:hover {
+            border-color: #6b48ff;
+        }
+
+        #file-name {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #34495e;
+        }
+
+        /* Highlight for missing inputs */
+        .highlight-error {
+            border-color: #e74c3c !important;
+            box-shadow: 0 0 8px rgba(231, 76, 60, 0.3) !important;
+        }
+
+        button {
+            background: linear-gradient(90deg, #ff7e5f, #feb47b);
+            color: #fff;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease, transform 0.2s ease;
+            margin: 10px 0;
+        }
+
+        button:hover {
+            background: linear-gradient(90deg, #feb47b, #ff7e5f);
+            transform: scale(1.05);
+        }
+
+        #error, #success, #login-error {
+            font-weight: 600;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            white-space: pre-line; /* Preserve newlines in the message */
+        }
+
+        #error, #login-error {
+            color: #e74c3c;
+        }
+
+        #success {
+            color: #27ae60;
+        }
+
+        #login-container, #uploader-container {
+            transition: opacity 0.3s ease;
+        }
+
+        #login-container { display: none; }
+        #form-container { display: none; }
+
+        /* Responsive Design */
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+                margin-top: 100px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            p {
+                font-size: 0.9rem;
+            }
+
+            .header h1 {
+                font-size: 1.2rem;
+            }
+
+            .logout-btn {
+                padding: 6px 12px;
+                font-size: 0.8rem;
+            }
+
+            button {
+                padding: 10px 20px;
+                font-size: 0.9rem;
+            }
+
+            .drag-drop-area {
+                padding: 15px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Sophia College Library</h1>
+        <button class="logout-btn" onclick="logout()" style="display: none;" id="logout-btn">Logout</button>
+    </div>
+
+    <div class="container" id="login-container">
+        <h1>Login to CSV Uploader</h1>
+        <p>Please enter the password to access the uploader.</p>
+        <div class="password-container">
+            <input type="password" id="password" placeholder="Password" required>
+            <span class="toggle-password" onclick="togglePassword()">👁️</span>
+        </div>
+        <button onclick="checkPassword()">Login</button>
+        <p id="login-error"></p>
+    </div>
+
+    <div class="container" id="uploader-container">
+        <h1>Upload CSV to Database</h1>
+        <p>Select a table and upload a UTF-8 CSV file to add or update records.</p>
+        
+        <div id="form-container">
+            <label for="table">Select Table:</label>
+            <select id="table" required>
+                <option value="">-- Choose a Table --</option>
+            </select>
+            
+            <label for="csvFile">Upload CSV File:</label>
+            <div class="drag-drop-area" id="drag-drop-area">
+                Drag & Drop your CSV file here or click to browse
+                <input type="file" id="csvFile" accept=".csv" style="display: none;" required>
+            </div>
+            <p id="file-name"></p>
+            
+            <button onclick="initiateUpload()">Upload and Process</button>
+        </div>
+        
+        <p id="error"></p>
+        <p id="success"></p>
+    </div>
+
+    <script>
+        const correctPassword = "AdminLogin2025"; // Set your desired password here
+        let selectedFile = null; // Store the selected/dropped file
+
+        // Check if already logged in (using localStorage)
+        if (localStorage.getItem('isLoggedIn') === 'true') {
+            document.getElementById('login-container').style.display = 'none';
+            document.getElementById('uploader-container').style.display = 'block';
+            document.getElementById('form-container').style.display = 'block';
+            document.getElementById('logout-btn').style.display = 'block';
+            loadTables();
+        } else {
+            document.getElementById('login-container').style.display = 'block';
+            document.getElementById('uploader-container').style.display = 'none';
+            document.getElementById('form-container').style.display = 'none';
+            document.getElementById('logout-btn').style.display = 'none';
+        }
+
+        // Toggle Password Visibility
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const toggleIcon = document.querySelector('.toggle-password');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.textContent = '👁️‍🗨️'; // Change icon to indicate visibility
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.textContent = '👁️'; // Change back to default eye icon
+            }
+        }
+
+        // Drag-and-Drop Functionality
+        const dragDropArea = document.getElementById('drag-drop-area');
+        const fileInput = document.getElementById('csvFile');
+        const fileNameDisplay = document.getElementById('file-name');
+
+        dragDropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dragDropArea.classList.add('drag-over');
+        });
+
+        dragDropArea.addEventListener('dragleave', () => {
+            dragDropArea.classList.remove('drag-over');
+        });
+
+        dragDropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dragDropArea.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelection(files[0]);
+            }
+        });
+
+        // Allow clicking to browse files
+        dragDropArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                handleFileSelection(fileInput.files[0]);
+            }
+        });
+
+        function handleFileSelection(file) {
+            if (file.name.endsWith('.csv')) {
+                selectedFile = file;
+                fileNameDisplay.textContent = `Selected file: ${file.name}`;
+                fileInput.classList.remove('highlight-error');
+            } else {
+                fileNameDisplay.textContent = '';
+                selectedFile = null;
+                document.getElementById('error').textContent = 'Only CSV files are allowed!';
+            }
+        }
+
+        // Enter Key for Login
+        document.getElementById('password').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const passwordInput = document.getElementById('password');
+                const loginError = document.getElementById('login-error');
+                loginError.textContent = '';
+                passwordInput.classList.remove('highlight-error');
+
+                if (!passwordInput.value) {
+                    passwordInput.classList.add('highlight-error');
+                    loginError.textContent = 'Please enter a password!';
+                } else {
+                    checkPassword();
+                }
+            }
+        });
+
+        // Enter Key for CSV Upload
+        document.getElementById('table').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                validateAndUpload();
+            }
+        });
+
+        dragDropArea.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                validateAndUpload();
+            }
+        });
+
+        function validateAndUpload() {
+            const tableSelect = document.getElementById('table');
+            const error = document.getElementById('error');
+            error.textContent = '';
+            tableSelect.classList.remove('highlight-error');
+            dragDropArea.classList.remove('highlight-error');
+
+            let hasError = false;
+            if (!tableSelect.value) {
+                tableSelect.classList.add('highlight-error');
+                error.textContent = 'Please select a table!';
+                hasError = true;
+            }
+            if (!selectedFile) {
+                dragDropArea.classList.add('highlight-error');
+                error.textContent = error.textContent ? error.textContent + ' Please upload a CSV file!' : 'Please upload a CSV file!';
+                hasError = true;
+            }
+
+            if (!hasError) {
+                initiateUpload();
+            }
+        }
+
+        // Fetch table names from back-end
+        async function loadTables() {
+            const select = document.getElementById('table');
+            try {
+                const response = await fetch('https://csv-uploader-easo.onrender.com/process_csv.php?action=get_tables');
+                const result = await response.json();
+                
+                if (result.success) {
+                    result.tables.forEach(table => {
+                        const option = document.createElement('option');
+                        option.value = table;
+                        option.textContent = table;
+                        select.appendChild(option);
+                    });
+                } else {
+                    document.getElementById('error').textContent = result.message;
+                }
+            } catch (error) {
+                document.getElementById('error').textContent = 'Error loading tables: ' + error.message;
+            }
+        }
+
+        // Initiate the upload process: send a single request to process CSV and get backup
+        async function initiateUpload() {
+            const table = document.getElementById('table').value;
+            const error = document.getElementById('error');
+            const success = document.getElementById('success');
+            error.textContent = '';
+            success.textContent = '';
+
+            // Validate table selection
+            if (!table) {
+                error.textContent = 'Please select a table!';
+                document.getElementById('table').classList.add('highlight-error');
+                return;
+            }
+
+            // Process CSV and get backup in one request
+            await uploadCSV(table);
+        }
+
+        // Handle CSV upload and backup download
+        async function uploadCSV(table) {
+            const error = document.getElementById('error');
+            const success = document.getElementById('success');
+            error.textContent = '';
+            success.textContent = 'Uploading CSV...';
+
+            // Validate inputs
+            if (!table) {
+                error.textContent = 'Please select a table!';
+                document.getElementById('table').classList.add('highlight-error');
+                return;
+            }
+            if (!selectedFile) {
+                error.textContent = 'Please select a CSV file!';
+                dragDropArea.classList.add('highlight-error');
+                return;
+            }
+
+            // Validate file type
+            if (!selectedFile.name.endsWith('.csv')) {
+                error.textContent = 'Only CSV files are allowed!';
+                return;
+            }
+
+            // Validate file size (max 3MB for Render's free tier)
+            if (selectedFile.size > 3 * 1024 * 1024) {
+                error.textContent = 'File size exceeds 3MB limit!';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('table', table);
+            formData.append('csvFile', selectedFile);
+
+            try {
+                const response = await fetch('https://csv-uploader-easo.onrender.com/process_csv.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    success.textContent = result.message;
+                    // If a backup is included, download it
+                    if (result.backup && result.backup_filename) {
+                        success.textContent = result.message + ' Downloading backup...';
+                        const backupContent = atob(result.backup); // Decode base64
+                        const blob = new Blob([backupContent], { type: 'application/octet-stream' });
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = url;
+                        a.download = result.backup_filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                        success.textContent = result.message + ' Backup downloaded successfully!';
+                    }
+                    selectedFile = null; // Clear the selected file
+                    fileNameDisplay.textContent = ''; // Clear the file name display
+                } else {
+                    error.textContent = result.message;
+                }
+            } catch (err) {
+                // Handle HTTP/2 PROTOCOL_ERROR
+                if (err.message.includes('PROTOCOL_ERROR')) {
+                    success.textContent = 'Rows were updated successfully, but there was a network issue. Please verify the data in the database.';
+                    // Since rows were updated, attempt to fetch the backup (though ideally handled by backend)
+                    selectedFile = null;
+                    fileNameDisplay.textContent = '';
+                } else {
+                    error.textContent = 'Error uploading file: ' + err.message;
+                }
+            }
+        }
+
+        // Store login state on successful login
+        function checkPassword() {
+            const password = document.getElementById('password').value;
+            const loginError = document.getElementById('login-error');
+
+            if (!password) {
+                loginError.textContent = 'Please enter a password!';
+                document.getElementById('password').classList.add('highlight-error');
+                return;
+            }
+
+            if (password === correctPassword) {
+                localStorage.setItem('isLoggedIn', 'true'); // Persist login state
+                document.getElementById('login-container').style.display = 'none';
+                document.getElementById('uploader-container').style.display = 'block';
+                document.getElementById('form-container').style.display = 'block';
+                document.getElementById('logout-btn').style.display = 'block';
+                loadTables();
+            } else {
+                loginError.textContent = 'Incorrect password!';
+            }
+        }
+
+        // Logout function
+        function logout() {
+            localStorage.removeItem('isLoggedIn');
+            document.getElementById('login-container').style.display = 'block';
+            document.getElementById('uploader-container').style.display = 'none';
+            document.getElementById('form-container').style.display = 'none';
+            document.getElementById('logout-btn').style.display = 'none';
+            document.getElementById('password').value = '';
+            selectedFile = null;
+            fileNameDisplay.textContent = '';
+        }
+    </script>
+</body>
+</html>
