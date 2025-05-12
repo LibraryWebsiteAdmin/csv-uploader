@@ -1,5 +1,20 @@
 <?php
-header('Access-Control-Allow-Origin: https://csv-uploader-1t0d.onrender.com'); // Updated to match your site
+// Define allowed origins
+$allowed_origins = [
+    'https://librarywebsiteadmin.github.io',
+    'https://csv-uploader-1t0d.onrender.com'
+];
+
+// Get the origin from the request
+$origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
+
+// Set the Access-Control-Allow-Origin header dynamically
+if (in_array($origin, $allowed_origins)) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+} else {
+    // Fallback to a default origin or reject the request
+    header('Access-Control-Allow-Origin: https://csv-uploader-1t0d.onrender.com');
+}
 header('Access-Control-Allow-Methods: GET, POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
