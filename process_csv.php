@@ -10,12 +10,12 @@ ob_start();
 $proxy_url = 'https://sophiacollegelibrary.in/api/db_proxy.php';
 $api_key = 'zX9mPqW3vL8nR5tY2uJ5%RT&l7gB!kM2wQ5eT8yI1oP4aL7xC0vN3b3I7'; // Same API key as in db_proxy.php
 
-// Hashed password (we'll generate this below)
+// Hashed password for secure login (replace with your generated hash)
 $hashedPassword = '$2b$12$n7K3E8I72Drpc7GSV69Sae.Y2DkqU5oDfWC1HQwx.l5MQTzQa5luu';
 
-// Handle POST request for login
+// Handle POST request for login (new endpoint for password verification)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'login') {
-    // Verify API key
+    // Verify API key (using the existing $api_key)
     if (!isset($_GET['api_key']) || $_GET['api_key'] !== $api_key) {
         header('Content-Type: application/json; charset=UTF-8');
         ob_clean();
@@ -176,7 +176,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     unlink($tmpFilePath);
 
     if (!$success) {
-        sendSSEError('Failed to process CSV via proxy: ' . $error);
+        sendSSEError('Failed to process CSV via proxy: ' + $error);
     }
 
     exit;
