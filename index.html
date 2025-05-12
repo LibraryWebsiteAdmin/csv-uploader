@@ -553,4 +553,178 @@
                 }, 500); // Brief delay to show 100% before hiding
             }
 
-            return completeProgress; // Return the function to
+            return completeProgress; // Return the function to complete the progress
+        }
+
+        // Handle CSV upload and backup download
+        async function uploadCSV(table) {
+            const error = document.getElementById('error');
+            const success = document.getElementById('success');
+            const progressContainer = document.getElementById('progress-container');
+            error.textContent = '';
+
+            // Validate inputs
+            if (!table) {
+                error.textContent = 'Please select a table!';
+                document.getElementById('table').classList.add('highlight-error');
+                return;
+            }
+            if (!selectedFile) {
+                error.textContent = 'Please select a CSV file!';
+                dragDropArea.classList.add('highlight-error');
+                return;
+            }
+
+            // Validate file type
+            if (!selectedFile.name.endsWith('.csv')) {
+                error.textContent = 'Only CSV files are allowed!';
+                return;
+            }
+
+            // Validate file size (max 3MB for Render's free tier)
+            if (selectedFile.size > 3 * 1024 * 1024) {
+                error.textContent = 'File size exceeds 3MB limit!';
+                return;
+            }
+
+            // Start the progress bar animation
+            const completeProgress = animateProgressBar();
+
+            const formData = new FormData();
+            formData.append('table', table);
+            formData.append('csvFile', selectedFile);
+
+            try {
+                const response = await fetch('https://csv-uploader-1t0d.onrender.com/process_csv.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                // Complete the progress bar animation to 100%
+                completeProgress();
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Split the message into parts for styling
+                    let formattedMessage = '';
+                    const messageParts = result.message.split('\nSkipped rows:\n');
+                    if (messageParts.length > 1) {
+                        const beforeSkipped = messageParts[0];
+                        const skipped = messageParts[1];
+                        formattedMessage = beforeSkipped + '<br><span class="skipped-rows">Skipped rows:<br>' + skipped + '</span><br>Final verdict: Success.';
+                    } else {
+                        formattedMessage = result.message + '<br>Final verdict: Success.';
+                    }
+
+                    // If a backup is included, download it
+                    if (result.backup && result.backup_filename) {
+                        formattedMessage += '<br>Downloading backup...';
+                        const backupContent = atob(result.backup); // Decode base64
+                        const blob = new Blob([backupContent], { type: 'application/octet-stream' });
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = url;
+                        a.download = result.backup_filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                        formattedMessage += '<br>Backup downloaded successfully!';
+                    }
+
+                    // Set the success message
+                    success.innerHTML = formattedMessage;
+
+                    // Clear the selected file and reset the file input
+                    selectedFile = null;
+                    fileNameDisplay.textContent = '';
+                    fileInput.value = ''; // Reset the file input to allow re-selection
+                } else {
+                    // Handle failure case: append "Final verdict: Failure."
+                    let formattedMessage = '';
+                    const messageParts = result.message.split('\nSkipped rows:\n');
+                    if (messageParts.length > 1) {
+                        const beforeSkipped = messageParts[0];
+                        const skipped = messageParts[1];
+                        formattedMessage = beforeSkipped + '<br><span class="skipped-rows">Skipped rows:<br>' + skipped + '</span><br>Final verdict: Failure.';
+                    } else {
+                        formattedMessage = result.message + '<br>Final verdict: Failure.';
+                    }
+                    error.innerHTML = formattedMessage;
+                }
+            } catch (err) {
+                // Complete the progress bar animation to 100%
+                completeProgress();
+
+                // Handle HTTP/2 PROTOCOL_ERROR
+                if (err.message.includes('PROTOCOL_ERROR')) {
+                    success.innerHTML = 'Rows were updated successfully, but there was a network issue. Please verify the data in the database.';
+                    selectedFile = null;
+                    fileNameDisplay.textContent = '';
+                    fileInput.value = ''; // Reset the file input
+                } else {
+                    error.innerHTML = 'Error uploading file: ' + err.message + '<br>Final verdict: Failure.';
+                }
+            }
+        }
+
+        // Store login state on successful login
+        async function checkPassword() {
+            const password = document.getElementById('password').value;
+            const loginError = document.getElementById('login-error');
+            loginError.textContent = '';
+            document.getElementById('password').classList.remove('highlight-error');
+
+            if (!password) {
+                loginError.textContent = 'Please enter a password!';
+                document.getElementById('password').classList.add('highlight-error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`https://csv-uploader-1t0d.onrender.com/process_csv.php?action=login&api_key=${apiKey}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ password: password })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    localStorage.setItem('isLoggedIn', 'true'); // Persist login state
+                    document.getElementById('login-container').style.display = 'none';
+                    document.getElementById('uploader-container').style.display = 'block';
+                    document.getElementById('form-container').style.display = 'block';
+                    document.getElementById('logout-btn').style.display = 'block';
+                    loadTables();
+                } else {
+                    loginError.textContent = result.message;
+                }
+            } catch (error) {
+                loginError.textContent = 'Error verifying password: ' + error.message;
+            }
+        }
+
+        // Logout function
+        function logout() {
+            localStorage.removeItem('isLoggedIn');
+            document.getElementById('login-container').style.display = 'block';
+            document.getElementById('uploader-container').style.display = 'none';
+            document.getElementById('form-container').style.display = 'none';
+            document.getElementById('logout-btn').style.display = 'none';
+            document.getElementById('password').value = '';
+            selectedFile = null;
+            fileNameDisplay.textContent = '';
+            fileInput.value = ''; // Reset the file input on logout
+        }
+    </script>
+</body>
+</html>
