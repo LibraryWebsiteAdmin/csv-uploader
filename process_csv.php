@@ -1,5 +1,5 @@
 <?php
-header('Access-Control-Allow-Origin: https://librarywebsiteadmin.github.io');
+header('Access-Control-Allow-Origin: https://csv-uploader-1t0d.onrender.com'); // Updated to match your site
 header('Access-Control-Allow-Methods: GET, POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
@@ -15,14 +15,6 @@ $hashedPassword = '$2b$12$n7K3E8I72Drpc7GSV69Sae.Y2DkqU5oDfWC1HQwx.l5MQTzQa5luu'
 
 // Handle POST request for login (new endpoint for password verification)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'login') {
-    // Verify API key (using the existing $api_key)
-    if (!isset($_GET['api_key']) || $_GET['api_key'] !== $api_key) {
-        header('Content-Type: application/json; charset=UTF-8');
-        ob_clean();
-        echo json_encode(['success' => false, 'message' => 'Invalid API key']);
-        exit;
-    }
-
     // Get the password from the request
     $data = json_decode(file_get_contents('php://input'), true);
     $password = isset($data['password']) ? $data['password'] : '';
@@ -176,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     unlink($tmpFilePath);
 
     if (!$success) {
-        sendSSEError('Failed to process CSV via proxy: ' + $error);
+        sendSSEError('Failed to process CSV via proxy: ' . $error);
     }
 
     exit;
