@@ -10,6 +10,45 @@ ob_start();
 $proxy_url = 'https://sophiacollegelibrary.in/api/db_proxy.php';
 $api_key = 'zX9mPqW3vL8nR5tY2uJ5%RT&l7gB!kM2wQ5eT8yI1oP4aL7xC0vN3b3I7'; // Same API key as in db_proxy.php
 
+// Hashed password (we'll generate this below)
+$hashedPassword = '$2b$12$n7K3E8I72Drpc7GSV69Sae.Y2DkqU5oDfWC1HQwx.l5MQTzQa5luu';
+
+// Handle POST request for login
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'login') {
+    // Verify API key
+    if (!isset($_GET['api_key']) || $_GET['api_key'] !== $api_key) {
+        header('Content-Type: application/json; charset=UTF-8');
+        ob_clean();
+        echo json_encode(['success' => false, 'message' => 'Invalid API key']);
+        exit;
+    }
+
+    // Get the password from the request
+    $data = json_decode(file_get_contents('php://input'), true);
+    $password = isset($data['password']) ? $data['password'] : '';
+
+    if (empty($password)) {
+        header('Content-Type: application/json; charset=UTF-8');
+        ob_clean();
+        echo json_encode(['success' => false, 'message' => 'Password is required']);
+        exit;
+    }
+
+    // Verify the password against the stored hash
+    if (password_verify($password, $hashedPassword)) {
+        // Generate a simple session token
+        $token = bin2hex(random_bytes(16)); // Random 32-character token
+        header('Content-Type: application/json; charset=UTF-8');
+        ob_clean();
+        echo json_encode(['success' => true, 'token' => $token]);
+    } else {
+        header('Content-Type: application/json; charset=UTF-8');
+        ob_clean();
+        echo json_encode(['success' => false, 'message' => 'Incorrect password']);
+    }
+    exit;
+}
+
 // Handle GET request for table names
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get_tables') {
     $url = $proxy_url . '?action=get_tables&api_key=' . urlencode($api_key);
